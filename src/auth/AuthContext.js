@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useState } from "react";
-import { fetchSinToken } from "../helpers/fetch";
+import { fetchConToken, fetchSinToken } from "../helpers/fetch";
 
 export const AuthContext = createContext();
 
@@ -33,8 +33,71 @@ export const AuthProvider = ({ children }) => {
 
 		return resp.ok;
 	};
-	const register = (nombre, email, password) => {};
-	const verificarToken = useCallback(() => {}, []); // usamos el useCallback por que esta funcion sera llamada dentro de un useEffect y si usamos el formato normal de funcion va a consumir mucho espacio
+	const register = async (nombre, email, password) => {
+		const resp = await fetchSinToken(
+			"login/new",
+			{ nombre, email, password },
+			"POST"
+		);
+
+		if (resp.ok) {
+			localStorage.setItem("token", resp.token);
+			const { usuario } = resp;
+			setAuth({
+				uid: usuario.uid,
+				checking: false,
+				logged: true,
+				name: usuario.nombre,
+				email: usuario.email,
+			});
+
+			console.log("registrado");
+		}
+
+		return resp;
+	};
+	const verificarToken = useCallback(async () => {
+		const token = localStorage.getItem("token");
+
+		if (!token) {
+			setAuth({
+				uid: null,
+				checking: false, // bandera para saber si el usuario ya esta autenticado
+				logged: false,
+				name: null,
+				email: null,
+			});
+
+			return false;
+		}
+
+		const resp = await fetchConToken("login/renew");
+		if (resp.ok) {
+			localStorage.setItem("token", resp.token);
+			const { usuario } = resp;
+			setAuth({
+				uid: usuario.uid,
+				checking: false,
+				logged: true,
+				name: usuario.nombre,
+				email: usuario.email,
+			});
+
+			console.log("autenticado");
+
+			return true;
+		} else {
+			setAuth({
+				uid: null,
+				checking: false,
+				logged: false,
+				name: null,
+				email: null,
+			});
+
+			return false;
+		}
+	}, []); // usamos el useCallback por que esta funcion sera llamada dentro de un useEffect y si usamos el formato normal de funcion va a consumir mucho espacio
 	const logout = () => {};
 
 	return (
